@@ -64,7 +64,7 @@ self.addEventListener('fetch', function(event) {
 `event.respondWith()` takes either a response or a promise that resolves to a response.
 `fetch()` returns a promise that resolves to a response. `fetch()` performs a normal browser fetch so results may come from cache or network.
 
-Here we intercept only reqs that end with .jpg and respond to those with our own git. All other reqs go through normally.
+Here we intercept only reqs that end with .jpg and respond to those with our own gif. All other reqs go through normally.
 ```
 self.addEventListener('fetch', function(event) {
   if (event.request.url.endsWith('.jpg')) {
@@ -123,25 +123,39 @@ When a page encounters an SW, it runs an install event, and the SW can't be used
 
 In the following example, we add an event listener to detect install, and when it happens, the event it will return is told to waitUntil the urls are loaded into a cache.
 ```
-self.addEventListener('install', function(event) {
-  var urlsToCache = [
-    '/',
-    'js/main.js',
-    'css/main.css',
-    'imgs/icon.png',
-    'https://fonts.gstatic.com/s/roboto/v15/2UX7WLTfW3W8TclTUvlFyQ.woff',
-    'https://fonts.gstatic.com/s/roboto/v15/d-6IYplOFocCacKzxwXSOD8E0i7KZn-EPnyo3HZu7kw.woff'
-  ];
+// Store cache name in a var
+let staticCacheName = 'wittr-static-v2';
 
+self.addEventListener('install', function(event) {
   event.waitUntil(
-    // TODO: open a cache named 'wittr-static-v1'
-    // Add cache the urls from urlsToCache
-    caches.open('wittr-static-v1')
-      .then((cache) => {
-        return cache.addAll(urlsToCache);
+    caches.open(staticCacheName).then(function(cache) {
+      return cache.addAll([
+        '/',
+        'js/main.js',
+        'css/main.css',
+        'imgs/icon.png',
+        'https://fonts.gstatic.com/s/roboto/v15/2UX7WLTfW3W8TclTUvlFyQ.woff',
+        'https://fonts.gstatic.com/s/roboto/v15/d-6IYplOFocCacKzxwXSOD8E0i7KZn-EPnyo3HZu7kw.woff'
+      ]);
+    })
+  );
+});
+
+self.addEventListener('activate', function(event) {
+  event.waitUntil(
+    caches.keys()  // Get all cache names
+      .then((cacheNames) => {
+        return Promise.all( // wrap all this in a promise so that everything finishes before we move on
+          cacheNames.filter((cacheName) => { // filter thru wittr names that are NOT our staticCacheName
+            return cacheName.startsWith('wittr-') && cacheName != staticCacheName;
+          }).map((cacheName) => { // map the results onto promises returned by cache.delete
+            return caches.delete(cacheName);
+          })
+        );
       })
   );
 });
+
 // This last bit listens for fetch, then looks in the cache for any items there.
 // It returns cache items if they exist, returns a network fetch if not
 self.addEventListener('fetch', function(event) {
